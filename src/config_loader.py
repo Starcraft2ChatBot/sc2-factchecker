@@ -1,0 +1,114 @@
+from __future__ import annotations
+
+import os
+import shutil
+from pathlib import Path
+from typing import Any, Dict, Optional
+
+import yaml
+from dotenv import load_dotenv
+from pydantic import BaseModel, Field
+
+load_dotenv()
+
+
+class LLMConfig(BaseModel):
+    provider: str = "gemini"
+    api_key: str = Field(
+        default_factory=lambda: os.getenv("LLM_API_KEY") or os.getenv("GEMINI_API_KEY", "")
+    )
+    model: str = "gemini-2.0-flash"
+    temperature: float = 0.3
+    max_output_tokens: int = 90
+    base_url: Optional[str] = None
+    think: bool = False
+    request_timeout_sec: float = 60
+    connect_timeout_sec: float = 10
+    health_timeout_sec: float = 10
+    fail_cooldown_sec: float = 45
+
+
+class GeminiConfig(BaseModel):
+    api_key: str = Field(default_factory=lambda: os.getenv("GEMINI_API_KEY", ""))
+    model: str = "gemini-2.0-flash"
+    temperature: float = 0.3
+    max_output_tokens: int = 90
+
+
+class PersonalityConfig(BaseModel):
+    aggressiveness: int = 2
+    political_mode: str = "factchecker"
+    response_length: str = "short"
+    emoji_intensity: int = 0
+    sc2_reference_level: int = 0
+    topics: Dict[str, bool] = Field(
+        default_factory=lambda: {
+            "politics": True,
+            "current_events": True,
+            "in_game_strategy": False,
+            "memes": False,
+            "personal": False,
+        }
+    )
+    custom_enabled: bool = True
+    custom_prompt: str = ""
+
+
+class Config(BaseModel):
+    llm: Optional[LLMConfig] = None
+    gemini: GeminiConfig = Field(default_factory=GeminiConfig)
+    owner: Dict[str, Any] = Field(default_factory=dict)
+    personality: PersonalityConfig = Field(default_factory=PersonalityConfig)
+    behaviour: Dict[str, Any] = Field(default_factory=dict)
+    anti_spam: Dict[str, Any] = Field(default_factory=dict)
+    memory: Dict[str, Any] = Field(default_factory=dict)
+    blacklist: Dict[str, Any] = Field(default_factory=dict)
+    favorites: Dict[str, Any] = Field(default_factory=dict)
+    research: Dict[str, Any] = Field(default_factory=dict)
+    factcheck: Dict[str, Any] = Field(default_factory=dict)
+    triggers: list = Field(default_factory=list)
+    canned_blocks: list = Field(default_factory=list)
+    logging: Dict[str, Any] = Field(default_factory=dict)
+    chat_backend: str = "simulated"
+    sc2_stub: Dict[str, Any] = Field(default_factory=dict)
+
+    def resolved_llm(self) -> LLMConfig:
+        if self.llm is not None:
+            provider = (self.llm.provider or "gemini").lower().strip()
+            key = self.llm.api_key or self.gemini.api_key or os.getenv("GEMINI_API_KEY", "")
+            if provider in ("ollama", "local") and not key:
+                key = "ollama"
+            base = self.llm.base_url
+            return LLMConfig(
+                provider=provider,
+                api_key=key,
+                model=self.llm.model or self.gemini.model,
+                temperature=self.llm.temperature,
+                max_output_tokens=self.llm.max_output_tokens,
+                base_url=base,
+                think=bool(getattr(self.llm, "think", False)),
+                request_timeout_sec=getattr(self.llm, "request_timeout_sec", 60),
+                connect_timeout_sec=getattr(self.llm, "connect_timeout_sec", 10),
+                health_timeout_sec=getattr(self.llm, "health_timeout_sec", 10),
+                fail_cooldown_sec=getattr(self.llm, "fail_cooldown_sec", 45),
+            )
+        return LLMConfig(
+            provider="gemini",
+            api_key=self.gemini.api_key or os.getenv("GEMINI_API_KEY", ""),
+            model=self.gemini.model,
+            temperature=self.gemini.temperature,
+            max_output_tokens=self.gemini.max_output_tokens,
+        )
+
+    @classmethod
+    def load(cls, path: str | Path = "config/config.yaml") -> "Config":
+        path = Path(path)
+        if not path.exists():
+            example = path.parent / "config.example.yaml"
+            if example.exists():
+                shutil.copy(example, path)
+            else:
+                raise FileNotFoundError(f"Config not found: {path}")
+        with open(path, "r", encoding="utf-8") as f:
+            raw = yaml.safe_load(f) or {}
+        return cls.model_validate(raw)
