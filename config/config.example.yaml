@@ -4,7 +4,7 @@ llm:
   api_key: "YOUR_API_KEY"
   model: "gemini-2.0-flash"
   temperature: 0.3            # low for precise fact-checking
-  max_output_tokens: 90       # keep replies short for lobby chat
+  max_output_tokens: 120       # room for short reply + full URL
   base_url: null
   think: false
   request_timeout_sec: 60
@@ -16,7 +16,7 @@ gemini:
   api_key: ""
   model: "gemini-2.0-flash"
   temperature: 0.3
-  max_output_tokens: 90
+  max_output_tokens: 120
 
 owner:
   names:
@@ -25,10 +25,9 @@ owner:
   command_prefix: "!"
 
 # ====================== FACT-CHECKER (this bot only) ======================
-# Personality is fixed to fact-checker. Do not enable troll/propaganda modes.
 personality:
   aggressiveness: 2
-  political_mode: "factchecker"   # forced / ignored — system prompt is hard fact-check
+  political_mode: "factchecker"
   response_length: "short"
   emoji_intensity: 0
   sc2_reference_level: 0
@@ -47,9 +46,10 @@ personality:
     When correcting:
       - clearly say the claim is wrong / false / not accurate / mixed
       - state what actually happened or the correct fact in one short clause
-      - ALWAYS name one credible source from the research brief (reuters, ap, factcheck.org, bbc, wikipedia, etc.)
-      - example: "thats false. [correction]. source: reuters"
-      - example: "mixed evidence — [nuance]. (ap / factcheck.org)"
+      - ALWAYS include the full real URL from the research brief (PRIMARY_SOURCE_URL)
+      - example: "thats false. [correction]. https://www.reuters.com/..."
+      - example: "mixed evidence — [nuance]. https://apnews.com/..."
+      - Copy the URL exactly. Never invent or alter a link.
     Do not echo the player's full message.
     Do not attack the person — only the claim.
     Evaluate on evidence only (politics, science, history, news — all fair game as claims).
@@ -62,11 +62,12 @@ personality:
 research:
   enabled: true
   timeout_sec: 12
-  max_chars: 1200
+  max_chars: 1400
   cache_ttl_sec: 600
   max_claims: 3
   min_score: 1.5
-  prefer_domains: []          # optional boost e.g. [".gov", ".edu", "reuters.com"]
+  require_url: true          # only keep sources that have a real http(s) link
+  prefer_domains: []
   trigger_substrings:
     - "prove it"
     - "source"
@@ -82,8 +83,9 @@ research:
 
 factcheck:
   enabled: true
-  reply_on_unverified: true   # set false to stay silent when no good sources
-  min_confidence_to_call_false: "medium"   # low | medium | high
+  include_full_urls: true
+  reply_on_unverified: true
+  min_confidence_to_call_false: "medium"
 
 blacklist:
   case_sensitive: false
@@ -103,7 +105,7 @@ behaviour:
   min_reply_delay_sec: 0.4
   max_reply_delay_sec: 1.0
   typo_chance: 0.0
-  reply_probability: 0.25     # low — prefers silence unless correcting
+  reply_probability: 0.25
   ignore_self: true
   ignore_system: true
   reply_to_game_requests: false
