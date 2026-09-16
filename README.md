@@ -1,74 +1,59 @@
-# SC2 Lobby Fact-Checker Bot
+# SC2 Lobby Fact-Checker
 
-**Only corrects lies and false claims — with credible sources.**
+Corrects false claims in StarCraft II lobby chat using live web research and real source URLs.
 
-This bot watches StarCraft II lobby chat, detects factual claims that look false or misleading, researches them using high-credibility sources, and replies with a short correction plus a named source.
+> Educational use only. Live OCR + keyboard automation may violate Blizzard ToS.
 
-It does **not** chatter, troll, or reply to pure opinions / banter.
+## Instant deploy (ZIP download)
 
-> Educational / research use only. Live client OCR + keyboard automation may violate Blizzard Terms of Service.
+1. **Download ZIP** from GitHub → Code → Download ZIP → extract
+2. **Install Python 3.10+** and (for live mode) [Tesseract OCR](https://github.com/UB-Mannheim/tesseract/wiki)
+3. Open a terminal in the extracted folder:
 
-## Behavior
+```bat
+python -m pip install -r requirements.txt
+```
 
-1. **OCR / simulated chat capture** — same pipeline as the general SC2 chatbot.
-2. **Claim detection** — only messages that look like factual assertions, absolute claims, “studies show”, numbers, “prove it”, etc.
-3. **Multi-source research** with credibility ranking:
-   - Prefer fact-checkers, wire services (Reuters, AP), major news, .gov / .edu, Wikipedia
-   - Down-rank blogs, social media, low-quality sites
-4. **Reply only when evidence supports a correction**
-   - Format: `thats false. [what actually happened]. source: reuters`
-   - Or: `mixed — [nuance]. (ap / factcheck.org)`
-   - Never invent a source name
-5. **Silence** on pure banter, insults without claims, and unverifiable noise (configurable).
-
-## Quick start (Windows)
+4. Edit **`config/config.yml`**:
+   - Set `llm.api_key` (Gemini or other provider)
+   - Set `owner.names` and `live.self_name` to your Battle.net / in-game name
+5. **Test without SC2:**
 
 ```bat
 start.bat
 ```
 
-Or:
+   (`chat_backend: "simulated"` is the default)
 
-```bat
-python -m pip install -r requirements.txt
-copy config\config.example.yaml config\config.yaml
-# set llm.api_key + owner names
-python main.py
-```
+6. **Live lobby mode:**
+   - Run SC2 windowed / borderless
+   - `python tools/measure_chat_region.py` → paste `chat_region` into `config/config.yml`
+   - Set `chat_backend: "live"` and `live.ocr_enabled: true`
+   - Run `start.bat` again
 
-## Key config
+## What it does
 
-```yaml
-research:
-  enabled: true
-  timeout_sec: 12
-  max_chars: 1200
-  cache_ttl_sec: 600
-  max_claims: 3
-  prefer_domains: []          # optional extra boost
+- Detects factual claims / "prove it" / "studies show" style messages
+- Searches the web (news, Wikipedia, fact-checkers, DuckDuckGo)
+- Keeps only credible sources that have a real URL
+- Replies only when evidence supports a correction, e.g.
+  `thats false. [correction]. https://www.reuters.com/...`
+- Stays silent on pure banter and opinions
 
-factcheck:
-  enabled: true
-  reply_on_unverified: true   # set false to stay silent when no good sources
-  min_confidence_to_call_false: "medium"
+## Config
 
-behaviour:
-  reply_probability: 0.25     # low — bot prefers silence unless correcting
-```
+All settings live in **`config/config.yml`** (only config file).
 
-## Live OCR
+| Key | Meaning |
+|-----|---------|
+| `chat_backend` | `simulated` or `live` |
+| `live` | OCR window region, Tesseract, self name (live mode only) |
+| `research` | triggers, timeouts, require_url |
+| `factcheck` | full URLs, reply_on_unverified |
 
-1. Install Tesseract.
-2. Windowed / borderless SC2.
-3. `python tools/measure_chat_region.py`
-4. Set `chat_backend: "sc2_stub"`, `ocr_enabled: true`, and the region.
+## Requirements
 
-## Architecture
-
-- `src/chat/sc2_stub.py` — OCR + send
-- `src/research.py` — claim extraction, multi-query search, credibility filter, ranked brief
-- `src/decision_engine.py` — only replies when research supports a correction
-- `src/llm_client.py` — Gemini / OpenAI-compatible / Ollama
+See `requirements.txt`. Optional live deps: `pyautogui`, `mss`, `Pillow`, `pytesseract`, `pyperclip`.
 
 ## License
 
