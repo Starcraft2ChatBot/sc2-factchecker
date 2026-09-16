@@ -1,5 +1,5 @@
 # SC2 Lobby Fact-Checker — main config
-# Edit this file, then run start.bat / python main.py
+# Edit this file, then run: start.bat   or   python main.py
 
 # ====================== LLM ======================
 llm:
@@ -7,15 +7,15 @@ llm:
   api_key: "YOUR_API_KEY"
   model: "gemini-2.0-flash"
   temperature: 0.3
-  max_output_tokens: 120          # short reply + full source URL
-  base_url: null
+  max_output_tokens: 120          # short correction + full source URL
+  base_url: null                  # set for ollama/openrouter/openai-compatible
   think: false
   request_timeout_sec: 60
   connect_timeout_sec: 10
   health_timeout_sec: 10
   fail_cooldown_sec: 45
 
-# Fallback keys for gemini provider (optional if llm.api_key is set)
+# Used when provider is gemini (optional if llm.api_key is set)
 gemini:
   api_key: ""
   model: "gemini-2.0-flash"
@@ -32,7 +32,6 @@ owner:
 # ====================== FACT-CHECKER PERSONA ======================
 personality:
   aggressiveness: 2
-  political_mode: "factchecker"
   response_length: "short"
   emoji_intensity: 0
   sc2_reference_level: 0
@@ -67,9 +66,9 @@ research:
   max_chars: 1400
   cache_ttl_sec: 600
   max_claims: 3
-  min_score: 1.5                 # claim-detection score threshold
-  require_url: true              # drop sources without a real http(s) link
-  prefer_domains: []             # optional boost e.g. [".gov", "reuters.com"]
+  min_score: 1.5                 # lower = research more often
+  require_url: true              # only keep sources with a real http(s) link
+  prefer_domains: []             # optional e.g. [".gov", "reuters.com"]
   trigger_substrings:
     - "prove it"
     - "source"
@@ -96,19 +95,16 @@ research:
 factcheck:
   enabled: true
   include_full_urls: true
-  reply_on_unverified: true
+  reply_on_unverified: true      # false = silence when no good sources
   min_confidence_to_call_false: "medium"
 
-# ====================== BEHAVIOUR ======================
+# ====================== REPLY / ANTI-SPAM ======================
 behaviour:
   min_reply_delay_sec: 0.4
   max_reply_delay_sec: 1.0
-  typo_chance: 0.0
-  reply_probability: 0.25
+  reply_probability: 0.25        # low — stay quiet unless correcting
   ignore_self: true
   ignore_system: true
-  reply_to_game_requests: false
-  game_request_use_canned: false
   address_by_name: true
   address_by_name_chance: 0.2
   name_separator: ", "
@@ -123,6 +119,7 @@ memory:
   max_messages_per_player: 20
   persist_path: "logs/memory.json"
 
+# OCR / unicode cleanup
 blacklist:
   case_sensitive: false
   words: []
@@ -138,19 +135,22 @@ logging:
   file: "logs/sc2_factchecker.log"
   console: true
 
+# ====================== CHAT BACKEND (required) ======================
+# simulated  = test in console without SC2
+# sc2_stub   = live OCR of SC2 window + keyboard/paste send
 chat_backend: "simulated"
 
 sc2_stub:
   window_title: "StarCraft II"
   chat_key: "enter"
   send_key: "enter"
-  input_method: "paste"
-  ocr_enabled: false
+  input_method: "paste"          # paste | type
+  ocr_enabled: false             # true when using live OCR
   poll_interval_sec: 0.45
-  chat_region: null
-  tesseract_cmd: null
+  chat_region: null              # [left, top, width, height] from measure_chat_region.py
+  tesseract_cmd: null            # path to tesseract.exe if not on PATH
   switch_channels: false
   channel_switch_key: "tab"
   assume_chat_opens_on_tab: 1
   max_chat_tabs: 8
-  self_name: "YourInGameName"
+  self_name: "YourInGameName"    # your in-game name (skip own messages)
