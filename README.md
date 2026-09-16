@@ -1,30 +1,25 @@
 # SC2 Lobby Fact-Checker Bot
 
-**Precise, evidence-based fact-checking for StarCraft II lobby chat.**
+**Only corrects lies and false claims — with credible sources.**
 
-This is a separate bot from the general SC2 chatbot. It keeps the same OCR + pipeline architecture but replaces personality chatter with rigorous claim detection and multi-source research.
+This bot watches StarCraft II lobby chat, detects factual claims that look false or misleading, researches them using high-credibility sources, and replies with a short correction plus a named source.
 
-> Educational / research use only. Live client OCR + keyboard automation may violate Blizzard Terms of Service and can result in account action. Use at your own risk.
+It does **not** chatter, troll, or reply to pure opinions / banter.
 
-## What it does
+> Educational / research use only. Live client OCR + keyboard automation may violate Blizzard Terms of Service.
 
-1. **OCR chat capture** (or simulated backend for testing)  
-   Polls a configured screen region, parses `[N. Channel] Player: message` lines, joins continuations, deduplicates.
+## Behavior
 
-2. **Claim detection**  
-   Triggers research when messages contain factual assertions, numbers, “studies show”, “prove it”, sources requests, etc. Skips pure banter and insults with no claim.
-
-3. **Multi-source research pipeline**  
-   - Claim extraction (1–3 atomic claims)  
-   - Query generation (neutral + debunk-style)  
-   - Parallel-ish fetches: DuckDuckGo, Wikipedia, Google News RSS, Fact Check tools, optional Bible API  
-   - Evidence compression into a short RESEARCH BRIEF with support / contradict / confidence  
-   - TTL cache so the same claim isn’t re-researched every spam
-
-4. **Verdict replies**  
-   Short lowercase lobby style:  
-   `mixed evidence on that — reuters and factcheck.org disagree on the numbers`  
-   Never invents sources. Says “unverified” when evidence is thin.
+1. **OCR / simulated chat capture** — same pipeline as the general SC2 chatbot.
+2. **Claim detection** — only messages that look like factual assertions, absolute claims, “studies show”, numbers, “prove it”, etc.
+3. **Multi-source research** with credibility ranking:
+   - Prefer fact-checkers, wire services (Reuters, AP), major news, .gov / .edu, Wikipedia
+   - Down-rank blogs, social media, low-quality sites
+4. **Reply only when evidence supports a correction**
+   - Format: `thats false. [what actually happened]. source: reuters`
+   - Or: `mixed — [nuance]. (ap / factcheck.org)`
+   - Never invent a source name
+5. **Silence** on pure banter, insults without claims, and unverifiable noise (configurable).
 
 ## Quick start (Windows)
 
@@ -37,45 +32,44 @@ Or:
 ```bat
 python -m pip install -r requirements.txt
 copy config\config.example.yaml config\config.yaml
-# edit config.yaml → set llm.api_key + owner names + (optional) OCR region
+# set llm.api_key + owner names
 python main.py
 ```
 
-## Config highlights
+## Key config
 
-See `config/config.example.yaml`:
+```yaml
+research:
+  enabled: true
+  timeout_sec: 12
+  max_chars: 1200
+  cache_ttl_sec: 600
+  max_claims: 3
+  prefer_domains: []          # optional extra boost
 
-- `research.*` — timeout, cache TTL, trigger substrings, max claims
-- `factcheck.*` — reply on unverified, min confidence to call something false
-- `personality.custom_prompt` — already set to the fact-checker system prompt
-- `chat_backend: "simulated"` for safe testing, `"sc2_stub"` for live OCR
+factcheck:
+  enabled: true
+  reply_on_unverified: true   # set false to stay silent when no good sources
+  min_confidence_to_call_false: "medium"
 
-## OCR / live mode
+behaviour:
+  reply_probability: 0.25     # low — bot prefers silence unless correcting
+```
 
-1. Install Tesseract and put it on PATH (or set `sc2_stub.tesseract_cmd`).
-2. Run StarCraft II in Windowed / Borderless.
-3. Measure the chat region: `python tools/measure_chat_region.py`
-4. Set `chat_backend: "sc2_stub"`, `ocr_enabled: true`, and the region in config.
-5. Restart the bot.
+## Live OCR
 
-## Architecture (kept from the original chatbot)
+1. Install Tesseract.
+2. Windowed / borderless SC2.
+3. `python tools/measure_chat_region.py`
+4. Set `chat_backend: "sc2_stub"`, `ocr_enabled: true`, and the region.
 
-- `src/chat/sc2_stub.py` — OCR + window focus + paste/type send path  
-- `src/decision_engine.py` — anti-spam → research → LLM → post-process  
-- `src/research.py` — multi-source evidence gathering  
-- `src/llm_client.py` — Gemini / OpenAI-compatible / Ollama  
-- YAML-driven config, owner commands (`!reload`, mute, etc.)
+## Architecture
 
-## Differences from the general chatbot
-
-| Feature              | Chatbot                  | Fact-Checker                     |
-|----------------------|--------------------------|----------------------------------|
-| Personality          | troll / propaganda / custom | **Fact-checker only**           |
-| Reply trigger        | probability + mentions   | Claim / evidence request first  |
-| Research             | optional light research  | **Always strong multi-source**  |
-| Tone                 | playful / aggressive     | Calm, precise, non-partisan     |
-| Invented sources     | possible in troll modes  | **Strictly forbidden**          |
+- `src/chat/sc2_stub.py` — OCR + send
+- `src/research.py` — claim extraction, multi-query search, credibility filter, ranked brief
+- `src/decision_engine.py` — only replies when research supports a correction
+- `src/llm_client.py` — Gemini / OpenAI-compatible / Ollama
 
 ## License
 
-MIT (same as the sibling chatbot). Educational use only.
+MIT. Educational use only.
