@@ -25,7 +25,7 @@ def _prepare_cwd() -> Path:
 
 async def main() -> None:
     root = _prepare_cwd()
-    cfg = config_path("config/config.yaml")
+    cfg = config_path("config/config.yml")
     print(f"[sc2-factchecker] app root: {root}")
     print(f"[sc2-factchecker] config:   {cfg}")
 

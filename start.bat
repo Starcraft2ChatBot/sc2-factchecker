@@ -7,13 +7,11 @@ echo   SC2 Lobby Fact-Checker Bot
 echo ============================================
 echo.
 
-if not exist "config\config.yaml" (
-  echo [!] config\config.yaml not found.
-  echo     Copying from config.example.yaml ...
-  if not exist "config" mkdir config
-  copy /Y "config\config.example.yaml" "config\config.yaml" >nul
-  echo     Edit config\config.yaml and set your API key + OCR region.
-  echo.
+if not exist "config\config.yml" (
+  echo [!] config\config.yml not found.
+  echo     Create it or restore it from the repo.
+  pause
+  exit /b 1
 )
 
 where python >nul 2>&1
